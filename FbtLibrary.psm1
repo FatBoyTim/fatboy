@@ -217,3 +217,48 @@ function Sync-ServerData {
 	}
 }
 
+
+function Get-FbtDfsReplicatedFoldersBacklog {
+    [CmdletBinding()]
+    Param (
+        [switch] $ShowProgress
+    )
+    # Local variables
+    $count = 0 
+    $foldersLookup = @{}
+
+    Write-Verbose "Getting DFSR State objects"
+    $states = Get-DFSRState
+    
+    Write-Verbose "Retrieving folder names"
+    foreach ($state in $states) {
+        $count++
+        if ($ShowProgress) {
+            Write-Progress -Activity "Retrieving folder names" -CurrentOperation "Getting data for $($state.FileName) ($($count) of $($states.Count))" -PercentComplete (($count/$states.Count)*100)
+        }
+        
+        if ($null -eq $foldersLookup.($state.ReplicatedFolderIdentifier))
+        {
+            $folderName = (Get-DfsReplicatedFolder | ?{$_.Identifier -eq $state.ReplicatedFolderIdentifier} | select -ExpandProperty FolderName)
+            Write-Debug "Adding  $folderName"
+            $foldersLookup += @{$state.ReplicatedFolderIdentifier = $folderName }
+        }
+        
+        $fn = $foldersLookup.($state.ReplicatedFolderIdentifier)
+        $state | Add-Member -MemberType NoteProperty -Name FolderName -Value $fn
+    }
+    return $states | Group-Object FolderName | select Name, Count | Sort-Object Name
+}
+
+function Get-FbtDfsBacklogCount {
+    [CmdletBinding()]
+    Param (
+        [Parameter(Mandatory=$true)] [String] $SourceComputerName,
+        [Parameter(Mandatory=$true)] [String] $DestinationComputerName,
+        [Parameter(ValueFromPipeline=$true)][String] $FolderName
+    )
+    Get-DfsrBacklog -SourceComputerName $SourceComputerName -DestinationComputerName $DestinationComputerName -FolderName $FolderName -Verbose | Out-Null 4>$1
+
+}
+
+#Get-FbtDfsReplicatedFoldersBacklog | select -ExpandProperty Name | %{Get-FbtDfsBacklogCount -SourceComputerName jeb-ps-cor19 -DestinationComputerName trb-ps-cor19 -FolderName $_}
