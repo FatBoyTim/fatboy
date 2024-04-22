@@ -261,4 +261,6 @@ function Get-FbtDfsBacklogCount {
 
 }
 
+function Monitor-Ping { while($true) { try { $ping = Test-Connection 8.8.8.8 -Count 1 -ErrorAction Stop; Write-Output "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') Ping SUCCEEDED ($($ping.ResponseTime)ms)" } catch { Write-Output "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') Ping FAILED" }; sleep 1 } }
+
 #Get-FbtDfsReplicatedFoldersBacklog | select -ExpandProperty Name | %{Get-FbtDfsBacklogCount -SourceComputerName jeb-ps-cor19 -DestinationComputerName trb-ps-cor19 -FolderName $_}
