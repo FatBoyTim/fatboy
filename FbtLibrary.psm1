@@ -261,6 +261,102 @@ function Get-FbtDfsBacklogCount {
 
 }
 
-function Monitor-Ping { while($true) { try { $ping = Test-Connection 8.8.8.8 -Count 1 -ErrorAction Stop; Write-Output "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') Ping SUCCEEDED ($($ping.ResponseTime)ms)" } catch { Write-Output "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') Ping FAILED" }; sleep 1 } }
+function Test-Ping { while($true) { try { $ping = Test-Connection 8.8.8.8 -Count 1 -ErrorAction Stop; Write-Output "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') Ping SUCCEEDED ($($ping.ResponseTime)ms)" } catch { Write-Output "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') Ping FAILED" }; sleep 1 } }
+
+
+function Set-ActiveWindow {
+    param (
+        [string]$WindowTitle = "Citrix Workspace"  # Adjust this to match your Citrix window title
+    )
+
+    Add-Type @"
+    using System;
+    using System.Runtime.InteropServices;
+
+    public class WinAPI {
+        [DllImport("user32.dll")]
+        public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+
+        [DllImport("user32.dll")]
+        public static extern bool SetForegroundWindow(IntPtr hWnd);
+    }
+"@
+
+    $hWnd = [WinAPI]::FindWindow($null, $WindowTitle)
+    if ($hWnd -ne [IntPtr]::Zero) {
+        [WinAPI]::SetForegroundWindow($hWnd) | Out-Null
+        Write-Output "Window '$WindowTitle' set to foreground."
+    } else {
+        Write-Output "Window '$WindowTitle' not found."
+    }
+}
+
+function Get-IdleTimeSeconds {
+    Add-Type @"
+    using System;
+    using System.Runtime.InteropServices;
+
+    public class IdleTime {
+        [DllImport("user32.dll")]
+        public static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct LASTINPUTINFO {
+            public uint cbSize;
+            public uint dwTime;
+        }
+
+        public static uint GetIdleTime() {
+            LASTINPUTINFO lastInputInfo = new LASTINPUTINFO();
+            lastInputInfo.cbSize = (uint)Marshal.SizeOf(lastInputInfo);
+            GetLastInputInfo(ref lastInputInfo);
+            return ((uint)Environment.TickCount - lastInputInfo.dwTime) / 1000;
+        }
+    }
+"@
+
+    return [IdleTime]::GetIdleTime()
+}
+
+function Send-KeyboardKeepAwake {
+	[CmdletBinding()]
+	Param ( 
+		$Interval = 30,
+		$Keys = $null
+	)
+	Write-Verbose "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'): Timeout period in seconds: $timeout"
+	if ($Keys -eq $null) { $useDate = $true } else { $useDate = $false }
+	$wshell = New-Object -ComObject WScript.Shell
+	
+	$firstRun = $true
+	while ($true) {
+		Start-Sleep $Interval
+		$idleTime = Get-IdleTimeSeconds
+		$timeout = (2 * $Interval)
+		Write-Verbose "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'): Idle time in seconds: $idleTime"
+		Write-Verbose "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'): Timeout period in seconds: $timeout"
+		if ($idleTime -ge $timeout)
+		{
+			Write-Verbose "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'): Sending Keep-Awake"
+			#Set-ActiveWindow -WindowTitle "VDI GBR Win11 PVM - Desktop Viewer"
+			if ($useDate) {
+				if ($firstRun) {
+					Write-Verbose "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'): Sending 1st Keep-Awake"
+					$wshell.SendKeys("$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')")
+					$firstRun = $false
+				} else {
+					Write-Verbose "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'): Sending Keep-Awake"
+					$wshell.SendKeys(" | $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')")
+				}
+			} else {
+				$wshell.SendKeys($Keys)
+			}
+		}
+	}
+}
+
+
+
+
 
 #Get-FbtDfsReplicatedFoldersBacklog | select -ExpandProperty Name | %{Get-FbtDfsBacklogCount -SourceComputerName jeb-ps-cor19 -DestinationComputerName trb-ps-cor19 -FolderName $_}
