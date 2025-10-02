@@ -324,9 +324,16 @@ function Send-KeyboardKeepAwake {
 		$Interval = 30,
 		$Keys = $null
 	)
-	Write-Verbose "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'): Timeout period in seconds: $timeout"
-	if ($Keys -eq $null) { $useDate = $true } else { $useDate = $false }
-	$wshell = New-Object -ComObject WScript.Shell
+
+	Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'): Polling interval in seconds: $Interval"
+	if ($Keys -eq $null) { 
+		Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'): Using text: <DateTime>"
+		$useDate = $true 
+	} else { 
+		Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'): Using text: $Keys"
+		$useDate = $false 
+	}
+	$wshell = New-Object -ComObject WScript.Shell	
 	
 	$firstRun = $true
 	while ($true) {
@@ -341,11 +348,11 @@ function Send-KeyboardKeepAwake {
 			#Set-ActiveWindow -WindowTitle "VDI GBR Win11 PVM - Desktop Viewer"
 			if ($useDate) {
 				if ($firstRun) {
-					Write-Verbose "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'): Sending 1st Keep-Awake"
+					Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'): Sending 1st Keep-Awake"
 					$wshell.SendKeys("$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')")
 					$firstRun = $false
 				} else {
-					Write-Verbose "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'): Sending Keep-Awake"
+					Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'): Sending Keep-Awake"
 					$wshell.SendKeys(" | $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')")
 				}
 			} else {
