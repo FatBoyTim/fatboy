@@ -322,7 +322,7 @@ function Send-KeyboardKeepAwake {
 	[CmdletBinding()]
 	Param ( 
 		$Interval = 30,
-		$PollCount = 2
+		$PollCount = 2,
 		$Keys = $null
 	)
 
