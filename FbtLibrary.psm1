@@ -322,6 +322,7 @@ function Send-KeyboardKeepAwake {
 	[CmdletBinding()]
 	Param ( 
 		$Interval = 30,
+		$PollCount = 2
 		$Keys = $null
 	)
 
@@ -339,7 +340,7 @@ function Send-KeyboardKeepAwake {
 	while ($true) {
 		Start-Sleep $Interval
 		$idleTime = Get-IdleTimeSeconds
-		$timeout = (2 * $Interval)
+		$timeout = ($PollCount * $Interval)
 		Write-Verbose "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'): Idle time in seconds: $idleTime"
 		Write-Verbose "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'): Timeout period in seconds: $timeout"
 		if ($idleTime -ge $timeout)
